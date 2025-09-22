@@ -2,3 +2,5 @@ data/building_damage/train
 data/building_damage/test
 data/flood/train
 data/flood/test
+data/flood_sar/train
+data/flood_sar/test
