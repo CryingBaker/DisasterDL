@@ -12,10 +12,8 @@ To get started, you need to prepare your dataset.
 
 ### 1. Create the following folder structure:
 
-data/
-└── flood/
-    ├── train/
-    └── test/
+data/flood/train/
+data/flood/test/
 
 ### 2. Download and place your dataset into these folders:
 

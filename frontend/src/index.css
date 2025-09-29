@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary-bg: #1B2A41;    /* Dark Navy */
+  --secondary-bg: #3A506B;  /* Lighter Navy for hover */
+  --text-primary: #ffffff;
+  --text-secondary: #8DA9C4; /* Muted Blue-Gray */
+  --accent-color: #3B82F6;   /* Bright Blue */
+  --content-bg: #f9fafb;     /* Gray-50 */
+  --content-text: #1f2937;   /* Gray-800 */
+  --card-bg: #ffffff;
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--content-bg);
+  color: var(--content-text);
+}
+
+.leaflet-container {
+    height: 100%;
+    width: 100%;
+    border-radius: 8px;
+}
