@@ -1,59 +1,52 @@
-import React from 'react';
-import { MapContainer, TileLayer, Polygon, CircleMarker, Popup, LayerGroup } from 'react-leaflet';
+import React, { useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import parseGeoraster from 'georaster';
+import GeoRasterLayer from 'georaster-layer-for-leaflet';
 
-// --- Demo Data (Mumbai) ---
-const center = [19.0760, 72.8777];
+// Custom component to handle the GeoRaster layer
+const GeoRasterComponent = ({ prediction }) => {
+  const map = useMap();
+  const layerRef = useRef(null);
 
-// A sample flood zone polygon
-const floodZone = [
-  [19.08, 72.87],
-  [19.08, 72.88],
-  [19.07, 72.88],
-  [19.07, 72.87],
-];
+  useEffect(() => {
+    if (prediction) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        parseGeoraster(event.target.result).then(georaster => {
+          const layer = new GeoRasterLayer({
+            georaster,
+            opacity: 0.7,
+            pixelValuesToColorFn: values => values[0] === 1 ? '#ff0000' : null,
+            resolution: 256,
+          });
 
-// Sample damaged buildings data
-const damagedBuildings = [
-  { id: 1, pos: [19.075, 72.875], severity: 'high', info: 'Building A: Severe structural damage' },
-  { id: 2, pos: [19.078, 72.878], severity: 'medium', info: 'Building B: Partial collapse' },
-  { id: 3, pos: [19.076, 72.87], severity: 'low', info: 'Building C: Minor damage' },
-];
+          if (layerRef.current) {
+            map.removeLayer(layerRef.current);
+          }
 
-const severityColors = {
-  high: 'red',
-  medium: 'orange',
-  low: 'yellow',
+          layer.addTo(map);
+          layerRef.current = layer;
+
+          // Fit map to the bounds of the new layer
+          map.fitBounds(layer.getBounds());
+        });
+      };
+      reader.readAsArrayBuffer(prediction);
+    }
+  }, [prediction, map]);
+
+  return null;
 };
 
-const Map = () => {
+const Map = ({ prediction, center }) => {
   return (
-    <MapContainer center={center} zoom={15} style={{ height: '100%', width: '100%' }}>
-      {/* Base Map Layer */}
+    <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
-
-      {/* Disaster Data Layers */}
-      <LayerGroup>
-        {/* Flood Zone Polygon */}
-        <Polygon pathOptions={{ color: 'blue', fillColor: 'lightblue' }} positions={floodZone} >
-            <Popup>Affected Flood Zone</Popup>
-        </Polygon>
-
-        {/* Damaged Buildings Markers */}
-        {damagedBuildings.map(building => (
-          <CircleMarker
-            key={building.id}
-            center={building.pos}
-            radius={8}
-            pathOptions={{ color: severityColors[building.severity], fillColor: severityColors[building.severity], fillOpacity: 0.7 }}
-          >
-            <Popup>{building.info}</Popup>
-          </CircleMarker>
-        ))}
-      </LayerGroup>
+      {prediction && <GeoRasterComponent prediction={prediction} />}
     </MapContainer>
   );
 };
