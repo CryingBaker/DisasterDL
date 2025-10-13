@@ -1,0 +1,14 @@
+2025-10-13 10:20:07,428 - ============================================================
+2025-10-13 10:20:07,428 - 🌊 Flood Mapping Model Training v7: Corrected Masked Loss
+2025-10-13 10:20:07,428 - Using device: mps
+2025-10-13 10:20:07,428 - Hyperparameters: LR=0.0001, BS=16, Epochs=50
+2025-10-13 10:20:07,428 - ============================================================
+2025-10-13 10:20:07,428 - Error creating dataset: [Errno 2] No such file or directory: '/Users/atharvwadadekar/Major Project/DisasterDL/data/sen1floods11/train.csv'
+2025-10-13 10:20:07,428 - Please ensure your DATA_DIR is correct and contains train.csv/val.csv and S1/Labels folders.
+2025-10-13 10:20:49,905 - ============================================================
+2025-10-13 10:20:49,905 - 🌊 Flood Mapping Model Training v7: Corrected Masked Loss
+2025-10-13 10:20:49,905 - Using device: mps
+2025-10-13 10:20:49,905 - Hyperparameters: LR=0.0001, BS=16, Epochs=50
+2025-10-13 10:20:49,905 - ============================================================
+2025-10-13 10:20:49,906 - Error creating dataset: [Errno 2] No such file or directory: '/Users/atharvwadadekar/Major Project/DisasterDL/data/flood_sar/sen1floods11/train.csv'
+2025-10-13 10:20:49,906 - Please ensure your DATA_DIR is correct and contains train.csv/val.csv and S1/Labels folders.
