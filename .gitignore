@@ -48,6 +48,7 @@ build/
 
 # Training artefacts
 logs/
+logs**/
 runs/
 wandb/
 
