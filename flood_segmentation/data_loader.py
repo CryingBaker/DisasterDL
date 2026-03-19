@@ -375,7 +375,7 @@ def get_dataloaders(root, phase, batch_size=4, use_flood_sampler=True):
 
     # NOTE: num_workers=0 is safest on MPS/Mac due to rasterio + multiprocessing issues.
     # Set to 2 only if you're on Linux. Keep 0 on macOS.
-    nw = 0
+    nw = 2
 
     if use_flood_sampler and phase in ["pretrain", "finetune"]:
         sampler = build_flood_sampler(train_dataset, flood_multiplier=4.0)
@@ -388,6 +388,7 @@ def get_dataloaders(root, phase, batch_size=4, use_flood_sampler=True):
         train_loader = DataLoader(
             train_dataset, batch_size=batch_size,
             shuffle=True, drop_last=True, num_workers=nw, pin_memory=False,
+            multiprocessing_context="spawn",
         )
 
     val_loader  = DataLoader(val_dataset,  batch_size=batch_size, shuffle=False, drop_last=False, num_workers=nw, pin_memory=False)

@@ -131,7 +131,7 @@ class FocalLoss(torch_nn.Module):
         log_pt_c = log_pt.gather(1, valid_labels.unsqueeze(1)).squeeze(1)
         pt_c     = pt.gather(1, valid_labels.unsqueeze(1)).squeeze(1)
 
-        alpha_t  = self.alpha[valid_labels]
+        alpha_t  = self.alpha.to(valid_labels.device)[valid_labels]
         loss     = -alpha_t * (1.0 - pt_c) ** self.gamma * log_pt_c
 
         # FIX: clamp individual losses before mean to prevent a single bad batch
