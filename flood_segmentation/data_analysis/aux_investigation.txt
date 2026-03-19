@@ -1,0 +1,39 @@
+Aux Correlation Investigation
+
+Tile India_207862:
+  Aux: Shape=(513, 513), CRS=EPSG:4326, Res=(8.983152841195215e-05, 8.983152841195215e-05)
+  Lbl: Shape=(512, 512), CRS=EPSG:4326, Res=(8.983152841195857e-05, 8.983152841195857e-05)
+  Grids Match: False
+  Attempting resampling aux (513, 513) -> label (512, 512)
+  Manual Pearson r: -0.1094
+  Aux Val Range: 57.0 to 84.0
+Tile USA_986268:
+  Aux: Shape=(513, 513), CRS=EPSG:4326, Res=(8.983152841195215e-05, 8.983152841195215e-05)
+  Lbl: Shape=(512, 512), CRS=EPSG:4326, Res=(8.983152841195857e-05, 8.983152841195857e-05)
+  Grids Match: False
+  Attempting resampling aux (513, 513) -> label (512, 512)
+  Manual Pearson r: -0.2534
+  Aux Val Range: 276.0 to 349.0
+Tile Mekong_45934:
+  Aux: Shape=(513, 513), CRS=EPSG:4326, Res=(8.983152841195215e-05, 8.983152841195215e-05)
+  Lbl: Shape=(512, 512), CRS=EPSG:4326, Res=(8.983152841195857e-05, 8.983152841195857e-05)
+  Grids Match: False
+  Attempting resampling aux (513, 513) -> label (512, 512)
+  Manual Pearson r: -0.0377
+  Aux Val Range: 20.0 to 67.0
+Tile Somalia_230192:
+  Aux: Shape=(513, 513), CRS=EPSG:4326, Res=(8.983152841195215e-05, 8.983152841195215e-05)
+  Lbl: Shape=(512, 512), CRS=EPSG:4326, Res=(8.983152841195205e-05, 8.983152841195205e-05)
+  Grids Match: False
+  Attempting resampling aux (513, 513) -> label (512, 512)
+  Manual Pearson r: -0.0004
+  Aux Val Range: 104.0 to 130.0
+Tile USA_275372:
+  Aux: Shape=(513, 513), CRS=EPSG:4326, Res=(8.983152841195215e-05, 8.983152841195215e-05)
+  Lbl: Shape=(512, 512), CRS=EPSG:4326, Res=(8.983152841195857e-05, 8.983152841195857e-05)
+  Grids Match: False
+  Attempting resampling aux (513, 513) -> label (512, 512)
+  Manual Pearson r: -0.1239
+  Aux Val Range: 277.0 to 354.0
+
+Recommendation: Standardize grids before correlation calculation. Aux looks like JRC if range is 0-100.

@@ -1,0 +1,26 @@
+# ACTION PLAN: FloodSegPro Data Handling
+
+1. SHAPE MISMATCHES:
+   - Dataloader MUST include a resampling step. Target shape: Canonical resolution found in shape_investigation.txt.
+   - Use 'nearest' for labels/aux, 'bilinear' for optical/SAR.
+
+2. PRE_S2 DEAD CHANNELS:
+   - Channels 6-12 appear consistently dead (NaN or Zero). 
+   - ACTION: Drop channels 6, 7, 8, 9, 10, 11, 12 from the S2 input stream to save memory/computation.
+
+3. S1_WEAK NaN HANDLING:
+   - Identify border NaNs. 
+   - ACTION: Implement a crop_border(padding=1 or 2) or use Zero-fill + Masking for S1 data.
+
+4. AUX DATA INTEGRATION:
+   - Ensure Aux is re-aligned to label grid.
+   - Values are 0-100 (JRC). 
+   - ACTION: Normalize to 0-1.
+
+5. CLEANING:
+   - Problematic tiles (all-invalid) have been removed from metadata and splits.
+   - Use the updated dataset_metadata.csv.
+
+6. S1 NORMALIZATION:
+   - S1 values are likely in linear scale with extreme outliers.
+   - ACTION: Apply dB transform if linear: np.log10(1 + clip(x, 0, 1)) or use percentile-based standard scaling.

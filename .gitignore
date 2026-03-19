@@ -1,0 +1,103 @@
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.env
+
+# ─── Node / React / Vite ─────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+
+# ─── Machine Learning ─────────────────────────────────────────────────────────
+# Model weights — large binary files, store in GCS/HuggingFace Hub
+*.pth
+*.pt
+*.h5
+*.ckpt
+*.pkl
+
+# Training artefacts
+logs/
+runs/
+wandb/
+
+# ─── Dataset & Data ───────────────────────────────────────────────────────────
+# Raw satellite imagery and label TIFFs — too large for Git
+data/
+*.tif
+*.tiff
+*.geotiff
+*.npy
+*.npz
+cached_crops/
+outputs/
+
+# Generated analysis outputs — re-creatable from data_analysis.py
+flood_segmentation/data_analysis/graphs/
+flood_segmentation/data_analysis/analysis_log.txt
+
+# IMPORTANT: Split files and metadata CSV are versioned (they define the train/val/test split)
+# DO NOT add to .gitignore:
+#   flood_segmentation/data_analysis/splits_*.txt
+#   flood_segmentation/data_analysis/dataset_metadata.csv
+#   flood_segmentation/data_analysis/normalization_stats.json
+
+# Building damage cached crops & outputs
+building_damage/data/
+building_damage/outputs/
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+Network\ Trash\ Folder
+Temporary\ Items
+.apdisk
+Thumbs.db
+
+# ─── IDEs & Editors ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.bak
+
+# ─── Backend runtime ──────────────────────────────────────────────────────────
+web_app/backend/backend.log
+web_app/backend/*.log

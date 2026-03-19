@@ -1,0 +1,104 @@
+S1_Weak NaN Investigation (20 Samples)
+
+Tile Colombia_8340601:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_7641390:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Colombia_737922:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_9018491:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile India_9735765:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Bolivia_690796:
+  Ch 0: NaN=50086 (19.11%), Inf=0 (0.00%)
+    Spatials: Border NaN=705, Center NaN=49381
+  Ch 1: NaN=50086 (19.11%), Inf=0 (0.00%)
+    Spatials: Border NaN=705, Center NaN=49381
+Tile India_2130364:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Ghana_7299015:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_977466:
+  Ch 0: NaN=180558 (68.88%), Inf=0 (0.00%)
+    Spatials: Border NaN=1215, Center NaN=179343
+  Ch 1: NaN=180558 (68.88%), Inf=0 (0.00%)
+    Spatials: Border NaN=1215, Center NaN=179343
+Tile Mekong_545558:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Bolivia_5185507:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_2532370:
+  Ch 0: NaN=142225 (54.25%), Inf=0 (0.00%)
+    Spatials: Border NaN=1066, Center NaN=141159
+  Ch 1: NaN=142225 (54.25%), Inf=0 (0.00%)
+    Spatials: Border NaN=1066, Center NaN=141159
+Tile Paraguay_6913558:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_5067520:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Bolivia_6850736:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_4290526:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Bolivia_5707080:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Pakistan_6602248:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Spain_9538934:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+Tile Mekong_6466048:
+  Ch 0: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+  Ch 1: NaN=0 (0.00%), Inf=0 (0.00%)
+    Spatials: Border NaN=0, Center NaN=0
+
+Recommendation: If NaNs are clustered at borders, use zero-filling and potentially crop edges. If pervasive, exclude tiles.

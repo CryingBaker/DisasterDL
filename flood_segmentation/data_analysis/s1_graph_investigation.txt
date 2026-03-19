@@ -1,0 +1,53 @@
+S1 Pixel Value & Graph Investigation
+
+
+Modality: s1_hand
+  Tile India_207862:
+    Ch 0: Min=-30.2133, Max=18.2470, Mean=-9.0263, Std=3.5630
+    Ch 1: Min=-47.6741, Max=9.7438, Mean=-15.7371, Std=3.9791
+  Tile USA_986268:
+    Ch 0: Min=-32.7784, Max=8.1599, Mean=-10.3035, Std=2.7972
+    Ch 1: Min=-47.3383, Max=-5.2221, Mean=-15.9590, Std=3.0622
+  Tile Mekong_45934:
+    Ch 0: Min=-25.5772, Max=13.3525, Mean=-8.0613, Std=1.9849
+    Ch 1: Min=-30.1523, Max=4.9108, Mean=-14.2521, Std=2.0673
+  Tile Somalia_230192:
+    Ch 0: Min=-28.1574, Max=-3.6522, Mean=-13.7154, Std=2.9175
+    Ch 1: Min=-47.0215, Max=-7.8629, Mean=-19.7810, Std=3.7936
+  Tile USA_275372:
+    Ch 0: Min=-35.2888, Max=15.9923, Mean=-11.0575, Std=3.0327
+    Ch 1: Min=-47.3432, Max=12.5574, Mean=-16.8817, Std=2.8709
+
+Modality: s1_weak
+  Tile Colombia_8340601:
+    Ch 0: Min=-47.0054, Max=-1.1378, Mean=-14.2500, Std=4.7857
+    Ch 1: Min=-50.2852, Max=-8.2445, Mean=-21.2734, Std=5.4448
+  Tile Mekong_7641390:
+    Ch 0: Min=-26.4574, Max=6.3138, Mean=-10.3824, Std=2.4902
+    Ch 1: Min=-47.8051, Max=-7.6699, Mean=-18.1604, Std=2.9617
+  Tile Colombia_737922:
+    Ch 0: Min=-30.2665, Max=0.2946, Mean=-8.8261, Std=2.7675
+    Ch 1: Min=-45.3834, Max=-6.1328, Mean=-14.8030, Std=2.7508
+  Tile Mekong_9018491:
+    Ch 0: Min=-30.4367, Max=10.9217, Mean=-15.4180, Std=2.9499
+    Ch 1: Min=-57.4535, Max=-3.9849, Mean=-29.4767, Std=7.7022
+  Tile India_9735765:
+    Ch 0: Min=-27.0698, Max=10.5911, Mean=-9.3100, Std=2.3980
+    Ch 1: Min=-47.2687, Max=-1.2610, Mean=-16.5070, Std=2.8973
+
+Modality: pre_s1
+  Tile Pakistan_6658443:
+    Ch 0: Min=-25.9983, Max=-2.2336, Mean=-11.7153, Std=2.4593
+    Ch 1: Min=-43.6272, Max=-10.7114, Mean=-20.2242, Std=3.1513
+  Tile India_2978646:
+    Ch 0: Min=-31.3198, Max=17.2488, Mean=-11.0292, Std=4.5952
+    Ch 1: Min=-47.5658, Max=5.4945, Mean=-18.9022, Std=5.3914
+  Tile Colombia_4899267:
+    Ch 0: Min=-17.9133, Max=-0.8737, Mean=-8.7099, Std=1.6772
+    Ch 1: Min=-29.9187, Max=-7.9257, Mean=-15.2128, Std=2.1770
+  Tile India_3217766:
+    Ch 0: Min=-25.8040, Max=9.7570, Mean=-8.2742, Std=3.8774
+    Ch 1: Min=-36.0097, Max=-1.2040, Mean=-15.0003, Std=4.1771
+  Tile Mekong_883523:
+    Ch 0: Min=-22.3712, Max=11.1737, Mean=-8.5094, Std=1.3409
+    Ch 1: Min=-29.4913, Max=-8.1474, Mean=-15.3723, Std=2.0209
