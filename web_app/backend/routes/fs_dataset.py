@@ -220,8 +220,7 @@ def get_images(uid):
 
         # Model prediction — build input tensor DIRECTLY from TIFFs (bypasses FloodDataset
         # which applies random H/V-flip + rot90 augmentations on every call when split='train')
-        pred_overlay    = None
-        overlap_overlay = None
+        pred_overlay = None
         try:
             from inference.fs_model_loader import get_loaded_fs_model, get_fs_device
             import json, torch, rasterio
@@ -277,20 +276,6 @@ def get_images(uid):
             pred_rgba[pmask == 1, 3] = 170
             pred_overlay = f"data:image/png;base64,{encode_rgba_png(pred_rgba)}"
 
-            # Yellow overlap — where GT and prediction both say flood
-            if lbl_path and os.path.exists(lbl_path):
-                with rasterio.open(lbl_path) as src:
-                    gt_raw = src.read(1).astype(np.int16)
-                    south_up_lbl = src.transform.e > 0
-                if south_up_lbl:
-                    gt_raw = np.flipud(gt_raw)
-                overlap = (gt_raw == 1) & (pmask == 1)
-                ov_rgba = np.zeros((*pmask.shape, 4), dtype=np.uint8)
-                ov_rgba[overlap, 0] = 255
-                ov_rgba[overlap, 1] = 220
-                ov_rgba[overlap, 3] = 210
-                overlap_overlay = f"data:image/png;base64,{encode_rgba_png(ov_rgba)}"
-
         except Exception as pe:
             import traceback; traceback.print_exc()
             print(f"Prediction (non-fatal): {pe}")
@@ -300,10 +285,9 @@ def get_images(uid):
             'pre_s2_image':   pre_s2_img,
             'post_s1_image':  post_s1_img,
             'post_s2_image':  post_s2_img,
-            'gt_overlay':     gt_overlay,       # Blue: ground truth flood
-            'pred_overlay':   pred_overlay,     # Red: model prediction flood
-            'overlap_overlay':overlap_overlay,  # Yellow: GT ∩ Prediction
-            'bounds':         bounds,
+            'gt_overlay':   gt_overlay,    # Blue: ground truth flood
+            'pred_overlay': pred_overlay,  # Red: model prediction flood
+            'bounds':       bounds,
             'set_type':       set_type,
         })
 

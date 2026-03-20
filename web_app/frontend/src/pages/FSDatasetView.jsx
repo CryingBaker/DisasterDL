@@ -162,53 +162,70 @@ export default function FSDatasetView() {
                             <Tag text={selectedItem.label_quality} colors={LABEL_COLOR[selectedItem.set_type] || LABEL_COLOR.weak} />
                         </div>
 
-                        {/* ── SINGLE COMBINED MAP ── */}
-                        <div className="glass-panel" style={{ padding: '0.75rem', flexShrink: 0 }}>
-                            <div style={{ marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.82rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
-                                Flood Map — Ground Truth + Model Prediction
-                            </div>
-                            <div style={{ height: '380px', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
-                                {bounds ? (
-                                    <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} zoomControl>
-                                        {/* Satellite base */}
-                                        <TileLayer
-                                            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                                            attribution="© Esri"
-                                        />
-                                        <FitBounds bounds={bounds} />
-                                        {/* Ground truth overlay — BLUE */}
-                                        {itemDetails?.gt_overlay && (
-                                            <ImageOverlay url={itemDetails.gt_overlay} bounds={bounds} opacity={1} />
-                                        )}
-                                        {/* Model prediction overlay — RED */}
-                                        {itemDetails?.pred_overlay && (
-                                            <ImageOverlay url={itemDetails.pred_overlay} bounds={bounds} opacity={1} />
-                                        )}
-                                        {/* Overlap overlay — YELLOW (GT ∩ Prediction) */}
-                                        {itemDetails?.overlap_overlay && (
-                                            <ImageOverlay url={itemDetails.overlap_overlay} bounds={bounds} opacity={1} />
-                                        )}
-                                    </MapContainer>
-                                ) : (
-                                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', borderRadius: '8px', color: 'rgba(255,255,255,0.3)' }}>
-                                        {itemLoading ? <Loader2 className="animate-spin" size={22} style={{ color: 'var(--accent-primary)' }} /> : 'No geo-coordinates in this tile'}
-                                    </div>
-                                )}
+                        {/* ── SIDE-BY-SIDE MAPS ── */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', flexShrink: 0 }}>
+                            {/* Ground Truth Map */}
+                            <div className="glass-panel" style={{ padding: '0.75rem' }}>
+                                <div style={{ marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.82rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(0,100,255,0.8)', display: 'inline-block', flexShrink: 0 }} />
+                                    Ground Truth
+                                </div>
+                                <div style={{ height: '340px', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                                    {bounds ? (
+                                        <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} zoomControl>
+                                            <TileLayer
+                                                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                                                attribution="© Esri"
+                                            />
+                                            <FitBounds bounds={bounds} />
+                                            {itemDetails?.gt_overlay && (
+                                                <ImageOverlay url={itemDetails.gt_overlay} bounds={bounds} opacity={1} />
+                                            )}
+                                        </MapContainer>
+                                    ) : (
+                                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', borderRadius: '8px', color: 'rgba(255,255,255,0.3)' }}>
+                                            {itemLoading ? <Loader2 className="animate-spin" size={22} style={{ color: 'var(--accent-primary)' }} /> : 'No geo-coordinates'}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(0,100,255,0.7)', display: 'inline-block' }} />
+                                    Blue = Flood
+                                    <span style={{ marginLeft: '0.75rem', width: '10px', height: '10px', borderRadius: '2px', border: '1px dashed rgba(255,255,255,0.2)', display: 'inline-block' }} />
+                                    Transparent = No-Flood
+                                </div>
                             </div>
 
-                            {/* Map legend */}
-                            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--glass-border)', flexWrap: 'wrap' }}>
-                                {[
-                                    { color: 'rgba(0,100,255,0.7)',   label: 'Ground Truth (Flood)' },
-                                    { color: 'rgba(255,0,0,0.7)',     label: 'Prediction (Flood)' },
-                                    { color: 'rgba(255,220,0,0.8)',   label: 'Overlap (GT ∩ Pred)' },
-                                    { color: 'rgba(0,0,0,0)',         label: 'No-Flood / Ignored', border: '1px dashed rgba(255,255,255,0.2)' },
-                                ].map(({ color, label, border }) => (
-                                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600 }}>
-                                        <div style={{ width: '14px', height: '14px', borderRadius: '3px', background: color, border: border || 'none' }} />
-                                        {label}
-                                    </div>
-                                ))}
+                            {/* Model Prediction Map */}
+                            <div className="glass-panel" style={{ padding: '0.75rem' }}>
+                                <div style={{ marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.82rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(255,60,60,0.85)', display: 'inline-block', flexShrink: 0 }} />
+                                    Model Prediction
+                                </div>
+                                <div style={{ height: '340px', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                                    {bounds ? (
+                                        <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} zoomControl>
+                                            <TileLayer
+                                                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                                                attribution="© Esri"
+                                            />
+                                            <FitBounds bounds={bounds} />
+                                            {itemDetails?.pred_overlay && (
+                                                <ImageOverlay url={itemDetails.pred_overlay} bounds={bounds} opacity={1} />
+                                            )}
+                                        </MapContainer>
+                                    ) : (
+                                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', borderRadius: '8px', color: 'rgba(255,255,255,0.3)' }}>
+                                            {itemLoading ? <Loader2 className="animate-spin" size={22} style={{ color: 'var(--accent-primary)' }} /> : 'No geo-coordinates'}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(255,60,60,0.7)', display: 'inline-block' }} />
+                                    Red = Predicted Flood
+                                    <span style={{ marginLeft: '0.75rem', width: '10px', height: '10px', borderRadius: '2px', border: '1px dashed rgba(255,255,255,0.2)', display: 'inline-block' }} />
+                                    Transparent = No-Flood
+                                </div>
                             </div>
                         </div>
 
