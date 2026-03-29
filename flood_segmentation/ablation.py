@@ -188,14 +188,6 @@ def run_ablation_variant(variant_name, variant_cfg, debug=False, epochs=60):
     # --- TEST EVAL ---
     ft_path = f"models/ablation_{variant_name}_best_model.pth"
     
-    # Rename artifacts to avoid overwrites
-    os.rename("models/best_model.pth", f"models/ablation_{variant_name}_best.pth")
-    os.rename("models/last_model.pth", f"models/ablation_{variant_name}_last.pth")
-    if os.path.exists("logs/training_log.csv"):
-        os.rename("logs/training_log.csv", f"logs/ablation_{variant_name}_log.csv")
-    if os.path.exists("logs/training_metrics.txt"):
-        os.rename("logs/training_metrics.txt", f"logs/ablation_{variant_name}_metrics.txt")
-
     # --- TEST EVAL ---
     if os.path.exists(ft_path):
         ckpt = torch.load(ft_path, map_location=device)
