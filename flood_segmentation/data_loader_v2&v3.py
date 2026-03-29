@@ -22,10 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 class FloodDataset(Dataset):
-    """
-    Standard supervised split: uses ONLY hand-labeled tiles.
-    """
     def __init__(self, root, split):
+        """
+        Single-phase dataset — always uses hand-labeled tiles only.
+        split: 'train', 'val', or 'test'
+        """
         super().__init__()
         self.root  = Path(root)
         self.split = split
@@ -34,15 +35,12 @@ class FloodDataset(Dataset):
         self.split_txt    = self.root / "data_analysis" / f"splits_{self.split}.txt"
         self.norm_json    = self.root / "data_analysis" / "normalization_stats.json"
 
-        assert self.split in ["train", "val", "test"]
+        assert self.split in ["train", "val", "test"], "split must be 'train', 'val', or 'test'"
 
         self._load_metadata()
         self._compute_or_load_normalization()
 
-        logger.info(
-            f"FloodDataset [{self.split}]: "
-            f"{len(self.tiles)} tiles (100% hand-labeled)"
-        )
+        logger.info(f"FloodDataset [{self.split}]: {len(self.tiles)} hand-labeled tiles")
 
     # ------------------------------------------------------------------
     # METADATA
@@ -55,11 +53,11 @@ class FloodDataset(Dataset):
         except Exception as e:
             raise RuntimeError(f"Failed to load metadata or split file: {e}")
 
-        df  = df[df['tile_id'].isin(split_ids)].copy()
-        col = 'has_hand_label' if 'has_hand_label' in df.columns else 'has_label_hand'
+        df = df[df['tile_id'].isin(split_ids)].copy()
 
-        # STRICT ENFORCEMENT: Only keep hand-labeled data
-        df = df[df[col] == True]
+        # Always hand-labeled only
+        col = 'has_hand_label' if 'has_hand_label' in df.columns else 'has_label_hand'
+        df  = df[df[col] == True]
 
         self.tiles = []
         for _, row in df.iterrows():
@@ -67,24 +65,21 @@ class FloodDataset(Dataset):
                 v = row.get(c, "")
                 return v if pd.notna(v) else ""
 
-            # S1/S2: prefer hand path, fall back to weak path if hand missing
             p_s1 = _get('s1_hand_path') or _get('s1_weak_path')
             p_s2 = _get('s2_hand_path') or _get('s2_weak_path')
-            p_lbl = _get('label_hand_path')
 
             self.tiles.append({
-                'tile_id':       row['tile_id'],
-                'has_hand_label': True,
-                'p_s1':          p_s1,
-                'p_s2':          p_s2,
-                'pre_s1':        _get('pre_s1_path'),
-                'pre_s2':        _get('pre_s2_path'),
-                'aux':           _get('aux_path'),
-                'p_lbl':         p_lbl,
+                'tile_id':  row['tile_id'],
+                'p_s1':     p_s1,
+                'p_s2':     p_s2,
+                'pre_s1':   _get('pre_s1_path'),
+                'pre_s2':   _get('pre_s2_path'),
+                'aux':      _get('aux_path'),
+                'p_lbl':    _get('label_hand_path'),
             })
 
     # ------------------------------------------------------------------
-    # NORMALIZATION  (computed from hand-labeled train split)
+    # NORMALIZATION  (all 20 channels)
     # ------------------------------------------------------------------
     def _compute_or_load_normalization(self):
         if self.norm_json.exists():
@@ -92,11 +87,10 @@ class FloodDataset(Dataset):
                 self.norm_stats = json.load(f)
             return
 
-        assert self.split == "train", (
-            "normalization_stats.json missing — run train dataset first."
-        )
+        assert self.split == "train", \
+            "normalization_stats.json missing — init training set first."
 
-        logger.info("Computing normalization stats from train split...")
+        logger.info("Computing per-channel normalization stats (all 20 channels)...")
 
         def _accumulate(tiles, path_key, num_chans):
             sums    = np.zeros(num_chans)
@@ -134,9 +128,14 @@ class FloodDataset(Dataset):
             return mean.tolist(), std.tolist()
 
         stats = {}
-        for key, nc in [('p_s1', 2), ('p_s2', 6), ('pre_s1', 2), ('pre_s2', 6), ('aux', 4)]:
+        for key, nc in [('p_s1', 2), ('p_s2', 6), ('pre_s1', 2), ('pre_s2', 6)]:
             m, s = _accumulate(self.tiles, key, nc)
             stats[key] = {'mean': m, 'std': s}
+
+        # Aux channels (DEM, HAND, JRC, VH/VV ratio) — compute properly
+        # aux is stored under 'aux' key
+        m, s = _accumulate(self.tiles, 'aux', 4)
+        stats['aux'] = {'mean': m, 'std': s}
 
         with open(self.norm_json, "w") as f:
             json.dump(stats, f, indent=4)
@@ -203,10 +202,10 @@ class FloodDataset(Dataset):
                     idx_list = list(range(1, min(src.count, num_chans) + 1))
                     data = src.read(idx_list[0])[np.newaxis] if len(idx_list) == 1 \
                         else src.read(idx_list)
+                    # pad / trim channels
                     if data.shape[0] < num_chans:
                         data = np.concatenate(
-                            [data, np.zeros((num_chans - data.shape[0],
-                                             *data.shape[1:]))], 0)
+                            [data, np.zeros((num_chans - data.shape[0], *data.shape[1:]))], 0)
                     elif data.shape[0] > num_chans:
                         data = data[:num_chans]
                     if crop:
@@ -244,24 +243,25 @@ class FloodDataset(Dataset):
         for i in range(2):
             m = self.norm_stats['p_s1']['mean'][i]
             s = self.norm_stats['p_s1']['std'][i]
-            img[i] = (img[i] - m) / max(s, 1e-6)
+            img[i] = (img[i] - m) / s
 
         for i in range(6):
             m = self.norm_stats['p_s2']['mean'][i]
             s = self.norm_stats['p_s2']['std'][i]
-            img[i + 2] = (img[i + 2] - m) / max(s, 1e-6)
+            img[i + 2] = (img[i + 2] - m) / s
 
         for i in range(2):
             m = self.norm_stats['pre_s1']['mean'][i]
             s = self.norm_stats['pre_s1']['std'][i]
-            img[i + 8] = (img[i + 8] - m) / max(s, 1e-6)
+            img[i + 8] = (img[i + 8] - m) / s
 
         for i in range(6):
             m = self.norm_stats['pre_s2']['mean'][i]
             s = self.norm_stats['pre_s2']['std'][i]
-            img[i + 10] = (img[i + 10] - m) / max(s, 1e-6)
+            img[i + 10] = (img[i + 10] - m) / s
 
-        if 'aux' in self.norm_stats and any(v > 0 for v in self.norm_stats['aux']['std']):
+        # Aux — use computed stats if available, else simple /100 fallback
+        if 'aux' in self.norm_stats and any(self.norm_stats['aux']['std']):
             for i in range(4):
                 m = self.norm_stats['aux']['mean'][i]
                 s = self.norm_stats['aux']['std'][i]
@@ -285,25 +285,27 @@ class FloodDataset(Dataset):
                 k   = random.randint(1, 3)
                 img = np.rot90(img, k, axes=(1, 2)).copy()
                 lbl = np.rot90(lbl, k, axes=(0, 1)).copy()
+            # S1 radiometric jitter
             if random.random() < 0.3:
                 for ch in [0, 1, 8, 9]:
                     img[ch] += np.random.normal(0, 0.1, (512, 512)).astype(np.float32)
+            # Random channel dropout — forces multi-modal robustness
             if random.random() < 0.15:
                 img[random.randint(0, 19)] = 0.0
 
         return {
-            'image':          torch.from_numpy(img).float(),
-            'label':          torch.from_numpy(lbl).long(),
-            'tile_id':        tid,
-            'split':          self.split,
-            'has_hand_label': tile['has_hand_label'],
+            'image': torch.from_numpy(img).float(),
+            'label': torch.from_numpy(lbl).long(),
+            'tile_id': tid,
+            'split':   self.split,
         }
+
 
 # ------------------------------------------------------------------
 # WEIGHTED SAMPLER
 # ------------------------------------------------------------------
 def build_flood_sampler(dataset, flood_multiplier=5.0):
-    logger.info("Building WeightedRandomSampler...")
+    logger.info("Building WeightedRandomSampler (reading flood fractions)...")
     weights = []
     for i in range(len(dataset)):
         frac = dataset.flood_pixel_fraction(i)
@@ -314,6 +316,7 @@ def build_flood_sampler(dataset, flood_multiplier=5.0):
         f"{int((w == 1.0).sum())} non-flood tiles"
     )
     return WeightedRandomSampler(w, num_samples=len(w), replacement=True)
+
 
 # ------------------------------------------------------------------
 # DATALOADERS
@@ -342,6 +345,7 @@ def get_dataloaders(root, batch_size=4):
     )
     return train_loader, val_loader, test_loader
 
+
 # ------------------------------------------------------------------
 # VALIDATION BLOCK
 # ------------------------------------------------------------------
@@ -352,11 +356,12 @@ if __name__ == '__main__':
     for name, loader in [("train", tr), ("val", vl)]:
         batch = next(iter(loader))
         img, lbl = batch['image'], batch['label']
-        print(f"[{name}] img: {img.shape}  min={img.min():.3f} max={img.max():.3f}")
-        print(f"[{name}] lbl: unique={torch.unique(lbl).tolist()}")
+        print(f"\n[{name}] img: {img.shape} {img.dtype}  "
+              f"min={img.min():.3f} max={img.max():.3f}")
+        print(f"[{name}] lbl: {lbl.shape}  unique={torch.unique(lbl).tolist()}")
         assert not torch.isnan(img).any(), "NaN in images!"
         assert not torch.isinf(img).any(), "Inf in images!"
-        assert set(torch.unique(lbl).tolist()).issubset({-1, 0, 1})
+        assert set(torch.unique(lbl).tolist()).issubset({-1, 0, 1}), "Bad labels!"
         assert img.shape == (2, 20, 512, 512)
         assert lbl.shape == (2, 512, 512)
 
