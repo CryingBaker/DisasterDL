@@ -6,7 +6,7 @@ warnings.filterwarnings("ignore")
 
 import numpy as np
 import pandas as pd
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from io import BytesIO
 from PIL import Image
 
@@ -128,6 +128,52 @@ def get_geo_bounds(tif_path):
         return None
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@fs_dataset_bp.route('/models', methods=['GET'])
+def list_models():
+    """Return all available flood-segmentation models with metrics."""
+    try:
+        from inference.fs_model_loader import get_available_models, get_default_model, get_model_info
+        models = get_available_models()
+        default = get_default_model()
+        info = get_model_info()
+        return jsonify({'models': models, 'default': default, 'model_info': info})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@fs_dataset_bp.route('/training_curves', methods=['GET'])
+def training_curves():
+    """Return per-epoch training data for all models (for charts)."""
+    import re, csv
+    result = {}
+
+    # ── Ablation models from log file ─────────────────────────────────
+    log_path = os.path.join(FS_DIR, 'models', 'disaster_dl_v15_mps.log')
+    if os.path.exists(log_path):
+        with open(log_path) as f:
+            for line in f:
+                m = re.search(
+                    r'\[(\w+)\] ([HW])-Ep (\d+) \| Loss: ([\d.]+) \| '
+                    r'Flood IoU: ([\d.]+) \| Mean IoU: ([\d.]+)', line)
+                if m:
+                    name = m.group(1).replace('_', ' ').title() + ' (Ablation)'
+                    phase = 'weak' if m.group(2) == 'W' else 'hand'
+                    result.setdefault(name, []).append({
+                        'phase': phase,
+                        'epoch': int(m.group(3)),
+                        'loss': round(float(m.group(4)), 4),
+                        'flood_iou': round(float(m.group(5)), 4),
+                        'mean_iou': round(float(m.group(6)), 4),
+                    })
+
+    return jsonify(result)
+
+
 @fs_dataset_bp.route('/list', methods=['GET'])
 def list_dataset():
     try:
@@ -136,6 +182,7 @@ def list_dataset():
             return jsonify({'error': 'Metadata CSV not found'}), 404
 
         df = pd.read_csv(meta_path)
+        df['region'] = df['tile_id'].str.split('_').str[0]
         data = []
         for _, row in df.iterrows():
             set_type = row.get('set_type', 'weak')
@@ -143,14 +190,29 @@ def list_dataset():
                 'uid': row['tile_id'],
                 'split': row.get('split', 'train'),
                 'set_type': set_type,
+                'region': row['region'],
                 'label_quality': 'Hand Labelled' if set_type in ['hand', 'both'] else 'Weakly Labelled',
                 'flood_ratio': float(row['label_flood_pct']) if pd.notna(row.get('label_flood_pct')) else 0.0,
             })
+
+        # Region breakdown
+        region_breakdown = {}
+        for region in sorted(df['region'].unique()):
+            rdf = df[df['region'] == region]
+            region_breakdown[region] = {
+                'total': int(len(rdf)),
+                'train': int(len(rdf[rdf['split'] == 'train'])),
+                'val': int(len(rdf[rdf['split'] == 'val'])),
+                'test': int(len(rdf[rdf['split'] == 'test'])),
+                'hand': int(len(rdf[rdf['set_type'].isin(['hand', 'both'])])),
+                'weak': int(len(rdf[rdf['set_type'] == 'weak'])),
+            }
 
         stats = {
             'training_tiles': int(len(df[df['split'] == 'train'])),
             'val_tiles':      int(len(df[df['split'] == 'val'])),
             'test_tiles':     int(len(df[df['split'] == 'test'])),
+            'region_breakdown': region_breakdown,
         }
         return jsonify({'data': data, 'total': len(data), 'stats': stats})
     except Exception as e:
@@ -161,6 +223,12 @@ def list_dataset():
 @fs_dataset_bp.route('/image/<uid>', methods=['GET'])
 def get_images(uid):
     try:
+        # ── Which model to use? ──────────────────────────────────────────
+        from inference.fs_model_loader import (
+            load_model, build_tensor, get_default_model, get_model_config
+        )
+        model_name = request.args.get('model', get_default_model())
+
         meta_path = os.path.join(FS_DIR, "data_analysis", "dataset_metadata.csv")
         df = pd.read_csv(meta_path)
         row = df[df['tile_id'] == uid]
@@ -192,7 +260,6 @@ def get_images(uid):
         post_s1_path = s1_hand_abs if (is_hand and s1_hand_abs and os.path.exists(s1_hand_abs)) else s1_weak_abs
 
         # GT label: use hand label if available, ALWAYS fall back to weak label
-        # (show ground truth for ALL tiles, hand or weak)
         if lbl_hand_abs and os.path.exists(lbl_hand_abs):
             lbl_path = lbl_hand_abs
         elif lbl_weak_abs and os.path.exists(lbl_weak_abs):
@@ -200,6 +267,11 @@ def get_images(uid):
         else:
             lbl_path = None
 
+        # Auxiliary
+        aux_rel = r.get('aux_path')
+        aux_abs = os.path.join(FS_DIR, aux_rel) if aux_rel and pd.notna(aux_rel) else None
+
+        # ── Preview images (unchanged, independent of model) ─────────────
         def img_b64(arr):
             return f"data:image/png;base64,{encode_png(arr)}"
 
@@ -218,63 +290,94 @@ def get_images(uid):
         bounds_path = post_s2_path or pre_s2_abs or post_s1_path or pre_s1_abs
         bounds = get_geo_bounds(bounds_path) if bounds_path and os.path.exists(bounds_path) else None
 
-        # Model prediction — build input tensor DIRECTLY from TIFFs (bypasses FloodDataset
-        # which applies random H/V-flip + rot90 augmentations on every call when split='train')
+        # ── Model prediction ─────────────────────────────────────────────
         pred_overlay = None
+        pred_stats = None
         try:
-            from inference.fs_model_loader import get_loaded_fs_model, get_fs_device
-            import json, torch, rasterio
+            import torch, rasterio
 
-            norm_path = os.path.join(FS_DIR, 'data_analysis', 'normalization_stats.json')
-            if not os.path.exists(norm_path):
-                raise FileNotFoundError(f"norm_stats.json not found at {norm_path}")
-            with open(norm_path) as f:
-                norm = json.load(f)
+            tensor = build_tensor(model_name, post_s1_path, post_s2_path,
+                                  pre_s1_abs, pre_s2_abs, aux_abs)
+            model, device = load_model(model_name)
 
-            def read_chans(tif_path, num_chans):
-                """Read num_chans bands from a GeoTIFF, centre-crop to 512×512."""
-                if not tif_path or not os.path.exists(tif_path):
-                    return np.zeros((num_chans, 512, 512), dtype=np.float32)
-                with rasterio.open(tif_path) as src:
-                    n = min(src.count, num_chans)
-                    data = src.read(list(range(1, n + 1))).astype(np.float32)
-                if data.shape[0] < num_chans:
-                    pad = np.zeros((num_chans - data.shape[0], *data.shape[1:]), dtype=np.float32)
-                    data = np.concatenate([data, pad], axis=0)
-                _, h, w = data.shape
-                if h > 512 or w > 512:
-                    cy, cx = h // 2, w // 2
-                    data = data[:, cy-256:cy+256, cx-256:cx+256]
-                return data
-
-            def norm_chans(data, key):
-                m, s = norm[key]['mean'], norm[key]['std']
-                for c in range(data.shape[0]):
-                    data[c] = (data[c] - m[c]) / (s[c] + 1e-9)
-                return data
-
-            img = np.zeros((20, 512, 512), dtype=np.float32)
-            img[0:2]  = norm_chans(read_chans(post_s1_path, 2), 's1')
-            img[2:8]  = norm_chans(read_chans(post_s2_path, 6), 's2')
-            img[8:10] = norm_chans(read_chans(pre_s1_abs,   2), 'pre_s1')
-            img[10:16]= norm_chans(read_chans(pre_s2_abs,   6), 'pre_s2')
-            aux_rel = r.get('aux_path')
-            if aux_rel and pd.notna(aux_rel):
-                aux_abs = os.path.join(FS_DIR, aux_rel)
-                img[16:20] = read_chans(aux_abs, 4) / 100.0
-            img = np.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
-
-            model  = get_loaded_fs_model()
-            device = get_fs_device()
             with torch.no_grad():
-                preds = model(torch.from_numpy(img).float().unsqueeze(0).to(device))
-                pmask = torch.argmax(preds[0], dim=0).cpu().numpy()  # (H,W) 0=dry 1=flood
+                inp = torch.from_numpy(tensor).float().unsqueeze(0).to(device)
+                preds = model(inp)
+                pmask = torch.argmax(preds[0], dim=0).cpu().numpy()
 
-            # Red overlay — predicted flood
             pred_rgba = np.zeros((*pmask.shape, 4), dtype=np.uint8)
             pred_rgba[pmask == 1, 0] = 255
             pred_rgba[pmask == 1, 3] = 170
             pred_overlay = f"data:image/png;base64,{encode_rgba_png(pred_rgba)}"
+
+            # Per-tile prediction stats
+            total_px = pmask.size
+            flood_px = int(np.sum(pmask == 1))
+            flood_pct = round(flood_px / total_px * 100, 2) if total_px > 0 else 0
+            area_km2 = round(flood_px * 100 / 1_000_000, 4)
+
+            pred_stats = {
+                'flood_pixels': flood_px,
+                'total_pixels': total_px,
+                'flood_pct': flood_pct,
+                'area_km2': area_km2,
+            }
+
+            # IoU vs GT if label exists
+            if lbl_path and os.path.exists(lbl_path):
+                with rasterio.open(lbl_path) as src:
+                    gt = src.read(1).astype(np.int16)
+                    if src.transform.e > 0:
+                        gt = np.flipud(gt)
+                # Crop/pad GT to match pred size
+                gh, gw = gt.shape
+                ph, pw = pmask.shape
+                if gh != ph or gw != pw:
+                    tmp = np.zeros((ph, pw), dtype=gt.dtype)
+                    mh, mw = min(gh, ph), min(gw, pw)
+                    tmp[:mh, :mw] = gt[:mh, :mw]
+                    gt = tmp
+
+                gt_mask = (gt == 1)
+                pred_mask = (pmask == 1)
+                noflood_gt = (gt == 0)
+                noflood_pred = (pmask == 0)
+
+                # Flood IoU
+                inter = int(np.sum(gt_mask & pred_mask))
+                union = int(np.sum(gt_mask | pred_mask))
+                flood_iou = round(inter / union, 4) if union > 0 else 0.0
+
+                # Non-flood IoU
+                nf_inter = int(np.sum(noflood_gt & noflood_pred))
+                nf_union = int(np.sum(noflood_gt | noflood_pred))
+                noflood_iou = round(nf_inter / nf_union, 4) if nf_union > 0 else 0.0
+
+                mean_iou = round((flood_iou + noflood_iou) / 2, 4)
+
+                # Accuracy
+                correct = int(np.sum(pmask == gt))
+                accuracy = round(correct / total_px, 4) if total_px > 0 else 0.0
+
+                # Precision & recall for flood class
+                tp = inter
+                fp = int(np.sum(pred_mask & ~gt_mask))
+                fn = int(np.sum(gt_mask & ~pred_mask))
+                precision = round(tp / (tp + fp), 4) if (tp + fp) > 0 else 0.0
+                recall = round(tp / (tp + fn), 4) if (tp + fn) > 0 else 0.0
+                f1 = round(2 * precision * recall / (precision + recall), 4) if (precision + recall) > 0 else 0.0
+
+                gt_flood = int(np.sum(gt_mask))
+                gt_pct = round(gt_flood / total_px * 100, 2) if total_px > 0 else 0
+
+                pred_stats['flood_iou'] = flood_iou
+                pred_stats['mean_iou'] = mean_iou
+                pred_stats['accuracy'] = accuracy
+                pred_stats['precision'] = precision
+                pred_stats['recall'] = recall
+                pred_stats['f1'] = f1
+                pred_stats['gt_flood_pixels'] = gt_flood
+                pred_stats['gt_flood_pct'] = gt_pct
 
         except Exception as pe:
             import traceback; traceback.print_exc()
@@ -285,10 +388,12 @@ def get_images(uid):
             'pre_s2_image':   pre_s2_img,
             'post_s1_image':  post_s1_img,
             'post_s2_image':  post_s2_img,
-            'gt_overlay':   gt_overlay,    # Blue: ground truth flood
-            'pred_overlay': pred_overlay,  # Red: model prediction flood
+            'gt_overlay':   gt_overlay,
+            'pred_overlay': pred_overlay,
             'bounds':       bounds,
             'set_type':       set_type,
+            'model_used':     model_name,
+            'pred_stats':     pred_stats,
         })
 
     except Exception as e:

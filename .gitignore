@@ -51,6 +51,7 @@ logs/
 logs**/
 runs/
 wandb/
+*.log
 
 # ─── Dataset & Data ───────────────────────────────────────────────────────────
 # Raw satellite imagery and label TIFFs — too large for Git
@@ -62,6 +63,8 @@ data/
 *.npz
 cached_crops/
 outputs/
+*.csv
+*.txt
 
 # Generated analysis outputs — re-creatable from data_analysis.py
 flood_segmentation/data_analysis/graphs/
@@ -102,3 +105,4 @@ Thumbs.db
 # ─── Backend runtime ──────────────────────────────────────────────────────────
 web_app/backend/backend.log
 web_app/backend/*.log
+

@@ -1,52 +1,19 @@
 """
-fs_predict.py — Live Flood Segmentation Prediction
-===================================================
+fs_predict.py — Live Flood Segmentation Prediction (multi-model)
+================================================================
 Accepts 5 GeoTIFF uploads (pre_s1, pre_s2, post_s1, post_s2, aux),
-builds a 20-channel input tensor (no random augmentations), runs the model,
+builds the input tensor appropriate for the selected model, runs inference,
 and returns a flood mask overlay + statistics + geo-bounds for Leaflet.
 """
 import base64
 import io
-import json
 import os
-import sys
 import tempfile
 import numpy as np
 from flask import Blueprint, jsonify, request
 from PIL import Image
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-FS_DIR   = os.path.join(BASE_DIR, 'DisasterDL/flood_segmentation')
-sys.path.insert(0, FS_DIR)
-
-from inference.fs_model_loader import get_loaded_fs_model, get_fs_device
-
 fs_predict_bp = Blueprint('fs_predict', __name__)
-
-NORM_JSON = os.path.join(FS_DIR, 'data_analysis', 'normalization_stats.json')
-
-
-def _read_tif_channels(tif_path, num_chans):
-    """Read num_chans bands from a GeoTIFF, centre-crop to 512×512. Returns (C,H,W) float32."""
-    import rasterio
-    with rasterio.open(tif_path) as src:
-        n    = min(src.count, num_chans)
-        data = src.read(list(range(1, n + 1))).astype(np.float32)  # (n,H,W)
-    if data.shape[0] < num_chans:
-        pad  = np.zeros((num_chans - data.shape[0], *data.shape[1:]), dtype=np.float32)
-        data = np.concatenate([data, pad], axis=0)
-    _, h, w = data.shape
-    if h > 512 or w > 512:
-        cy, cx = h // 2, w // 2
-        data = data[:, cy-256:cy+256, cx-256:cx+256]
-    return data
-
-
-def _norm(data, key, norm):
-    m, s = norm[key]['mean'], norm[key]['std']
-    for c in range(data.shape[0]):
-        data[c] = (data[c] - m[c]) / (s[c] + 1e-9)
-    return data
 
 
 def _get_bounds(tif_path):
@@ -129,19 +96,18 @@ def _sar_to_rgb_b64(tif_path):
 def run_prediction():
     """
     Expects a multipart/form-data POST with up to 5 files:
-      pre_s1   — pre-event Sentinel-1 GeoTIFF  (2 bands: VV, VH)
-      pre_s2   — pre-event Sentinel-2 GeoTIFF  (6 bands: B2,B3,B4,B8,B11,B12)
-      post_s1  — post-event Sentinel-1 GeoTIFF (2 bands)
-      post_s2  — post-event Sentinel-2 GeoTIFF (6 bands)
-      aux      — auxiliary GeoTIFF             (4 bands: SRTM, HAND, JRC occ, JRC season)
-
-    At least one of post_s1 / post_s2 must be provided.
+      pre_s1, pre_s2, post_s1, post_s2, aux
+    And an optional field:
+      model — name of the model to use (defaults to first available)
     """
-    if not os.path.exists(NORM_JSON):
-        return jsonify({'error': f'normalization_stats.json not found at {NORM_JSON}'}), 500
+    from inference.fs_model_loader import (
+        load_model, build_tensor, get_default_model, get_available_models
+    )
 
-    with open(NORM_JSON) as f:
-        norm = json.load(f)
+    # ── Determine which model to use ──────────────────────────────────────
+    model_name = request.form.get('model', get_default_model())
+    if model_name not in get_available_models():
+        return jsonify({'error': f"Unknown model: {model_name}"}), 400
 
     # Save uploaded files to a temp dir
     tmpdir = tempfile.mkdtemp()
@@ -157,39 +123,31 @@ def run_prediction():
         if not saved:
             return jsonify({'error': 'No files uploaded. Please upload at least post_s1 or post_s2.'}), 400
 
-        # ── Build 20-channel tensor ──────────────────────────────────────────
-        img = np.zeros((20, 512, 512), dtype=np.float32)
+        # ── Build tensor using the model loader ──────────────────────────
+        tensor = build_tensor(
+            model_name,
+            ps1=saved.get('post_s1'),
+            ps2=saved.get('post_s2'),
+            pres1=saved.get('pre_s1'),
+            pres2=saved.get('pre_s2'),
+            aux=saved.get('aux'),
+        )
 
-        if 'post_s1' in saved:
-            img[0:2]  = _norm(_read_tif_channels(saved['post_s1'], 2), 's1', norm)
-        if 'post_s2' in saved:
-            img[2:8]  = _norm(_read_tif_channels(saved['post_s2'], 6), 's2', norm)
-        if 'pre_s1' in saved:
-            img[8:10] = _norm(_read_tif_channels(saved['pre_s1'], 2), 'pre_s1', norm)
-        if 'pre_s2' in saved:
-            img[10:16]= _norm(_read_tif_channels(saved['pre_s2'], 6), 'pre_s2', norm)
-        if 'aux' in saved:
-            img[16:20]= _read_tif_channels(saved['aux'], 4) / 100.0
-
-        img = np.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
-
-        # ── Run model ─────────────────────────────────────────────────────────
+        # ── Run model ─────────────────────────────────────────────────────
         import torch
-        model  = get_loaded_fs_model()
-        device = get_fs_device()
+        model, device = load_model(model_name)
         with torch.no_grad():
-            t     = torch.from_numpy(img).float().unsqueeze(0).to(device)
+            t     = torch.from_numpy(tensor).float().unsqueeze(0).to(device)
             preds = model(t)
             pmask = torch.argmax(preds[0], dim=0).cpu().numpy()   # (H,W) 0=dry 1=flood
 
-        # ── Overlays ──────────────────────────────────────────────────────────
-        # Red: flood prediction
+        # ── Overlays ──────────────────────────────────────────────────────
         pred_rgba = np.zeros((*pmask.shape, 4), dtype=np.uint8)
         pred_rgba[pmask == 1, 0] = 255
         pred_rgba[pmask == 1, 3] = 170
         pred_overlay = f"data:image/png;base64,{_encode_rgba_png(pred_rgba)}"
 
-        # ── Stats ─────────────────────────────────────────────────────────────
+        # ── Stats ─────────────────────────────────────────────────────────
         total       = pmask.size
         flood_px    = int(np.sum(pmask == 1))
         dry_px      = int(np.sum(pmask == 0))
@@ -200,11 +158,11 @@ def run_prediction():
             'Dry/Safe': {'count': dry_px,   'percentage': round(dry_px   / total * 100, 2)},
         }
 
-        # ── Geo bounds (for Leaflet) ───────────────────────────────────────────
+        # ── Geo bounds (for Leaflet) ───────────────────────────────────────
         bounds_path = saved.get('post_s2') or saved.get('post_s1') or saved.get('pre_s2') or saved.get('pre_s1')
         bounds = _get_bounds(bounds_path) if bounds_path else None
 
-        # ── Preview images ────────────────────────────────────────────────────
+        # ── Preview images ────────────────────────────────────────────────
         previews = {
             'pre_s1_image':  _sar_to_rgb_b64(saved['pre_s1'])          if 'pre_s1'  in saved else None,
             'pre_s2_image':  _tif_to_rgb_b64(saved['pre_s2'], [3,2,1]) if 'pre_s2'  in saved else None,
@@ -218,6 +176,7 @@ def run_prediction():
             'bounds':              bounds,
             'breakdown':           breakdown,
             'estimated_area_km2':  area_km2,
+            'model_used':          model_name,
         })
 
     except Exception as e:

@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, ImageOverlay } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-    Upload, Layers, Loader2, AlertCircle, CheckCircle2, Satellite, Waves
+    Upload, Layers, Loader2, AlertCircle, CheckCircle2, Satellite, Waves, ChevronDown
 } from 'lucide-react';
 
 const PREDICT_API = 'http://localhost:5000/api/fs_predict';
+const DATASET_API = 'http://localhost:5000/api/fs_dataset';
 
 // ── Channel definitions ──────────────────────────────────────────────────────
 const CHANNELS = [
@@ -45,12 +46,26 @@ const PREVIEW_KEY = {
 };
 
 export default function FSPredictView() {
-    const [files, setFiles]       = useState({});  // key → File
-    const [dragOver, setDragOver] = useState(null); // which slot is being hovered
+    const [files, setFiles]       = useState({});
+    const [dragOver, setDragOver] = useState(null);
     const [loading, setLoading]   = useState(false);
     const [error, setError]       = useState(null);
     const [results, setResults]   = useState(null);
     const fileInputRefs = useRef({});
+
+    // ── Model selection ──────────────────────────────────────────────────
+    const [models, setModels]             = useState([]);
+    const [selectedModel, setSelectedModel] = useState('');
+
+    useEffect(() => {
+        fetch(`${DATASET_API}/models`)
+            .then(r => r.json())
+            .then(data => {
+                setModels(data.models || []);
+                setSelectedModel(data.default || '');
+            })
+            .catch(console.error);
+    }, []);
 
     const handleFileChange = (key, file) => {
         if (!file) return;
@@ -84,6 +99,7 @@ export default function FSPredictView() {
         for (const [key, file] of Object.entries(files)) {
             form.append(key, file);
         }
+        if (selectedModel) form.append('model', selectedModel);
 
         try {
             const res = await fetch(`${PREDICT_API}/run`, { method: 'POST', body: form });
@@ -114,6 +130,24 @@ export default function FSPredictView() {
                         Upload GeoTIFFs for each channel. At minimum, provide <strong>Post-Event S1</strong> or <strong>Post-Event S2</strong>.
                     </p>
 
+                    {/* Model Selector */}
+                    {models.length > 0 && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Model</div>
+                            <div style={{ position: 'relative' }}>
+                                <select
+                                    id="fs-predict-model-selector"
+                                    value={selectedModel}
+                                    onChange={e => { setSelectedModel(e.target.value); setResults(null); }}
+                                    style={{ width: '100%', padding: '0.45rem 2rem 0.45rem 0.6rem', borderRadius: '7px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none', outline: 'none' }}
+                                >
+                                    {models.map(m => <option key={m} value={m} style={{ background: '#1a1a2e', color: '#e0e0e0' }}>{m}</option>)}
+                                </select>
+                                <ChevronDown size={14} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-secondary)' }} />
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {CHANNELS.map(ch => {
                             const hasFile = !!files[ch.key];
@@ -132,29 +166,14 @@ export default function FSPredictView() {
                                         onDragLeave={() => setDragOver(null)}
                                         onDrop={e => handleDrop(ch.key, e)}
                                         style={{
-                                            padding: '0.75rem 1rem',
-                                            borderRadius: '10px',
-                                            border: hasFile
-                                                ? '1px solid rgba(0,200,100,0.4)'
-                                                : isOver
-                                                    ? '1.5px dashed var(--accent-primary)'
-                                                    : '1.5px dashed rgba(255,255,255,0.12)',
-                                            background: hasFile
-                                                ? 'rgba(0,180,80,0.07)'
-                                                : isOver
-                                                    ? 'rgba(99,179,237,0.07)'
-                                                    : 'rgba(255,255,255,0.02)',
-                                            cursor: hasFile ? 'default' : 'pointer',
-                                            transition: 'all 0.15s ease',
+                                            padding: '0.75rem 1rem', borderRadius: '10px',
+                                            border: hasFile ? '1px solid rgba(0,200,100,0.4)' : isOver ? '1.5px dashed var(--accent-primary)' : '1.5px dashed rgba(255,255,255,0.12)',
+                                            background: hasFile ? 'rgba(0,180,80,0.07)' : isOver ? 'rgba(99,179,237,0.07)' : 'rgba(255,255,255,0.02)',
+                                            cursor: hasFile ? 'default' : 'pointer', transition: 'all 0.15s ease',
                                             display: 'flex', alignItems: 'center', gap: '0.75rem',
                                         }}
                                     >
-                                        {/* Status icon */}
-                                        <div style={{ fontSize: '1.25rem', flexShrink: 0 }}>
-                                            {hasFile ? '✅' : ch.icon}
-                                        </div>
-
-                                        {/* Labels */}
+                                        <div style={{ fontSize: '1.25rem', flexShrink: 0 }}>{hasFile ? '✅' : ch.icon}</div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 {ch.label}
@@ -164,15 +183,9 @@ export default function FSPredictView() {
                                                 {hasFile ? files[ch.key].name : `${ch.sublabel} · ${ch.bands}`}
                                             </div>
                                         </div>
-
-                                        {/* Action button */}
                                         {hasFile ? (
-                                            <button
-                                                onClick={e => { e.stopPropagation(); clearFile(ch.key); }}
-                                                style={{ background: 'rgba(255,100,100,0.15)', border: 'none', borderRadius: '6px', padding: '4px 8px', color: '#ff8080', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                                            >
-                                                ✕
-                                            </button>
+                                            <button onClick={e => { e.stopPropagation(); clearFile(ch.key); }}
+                                                style={{ background: 'rgba(255,100,100,0.15)', border: 'none', borderRadius: '6px', padding: '4px 8px', color: '#ff8080', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>✕</button>
                                         ) : (
                                             <Upload size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
                                         )}
@@ -182,17 +195,9 @@ export default function FSPredictView() {
                         })}
                     </div>
 
-                    {/* Run button */}
-                    <button
-                        className="btn-primary"
-                        style={{ width: '100%', marginTop: '1.25rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                        onClick={handlePredict}
-                        disabled={loading || (!files.post_s1 && !files.post_s2)}
-                    >
-                        {loading
-                            ? <><Loader2 size={18} className="animate-spin" /> Running Inference…</>
-                            : <><Waves size={18} /> Run Flood Prediction</>
-                        }
+                    <button className="btn-primary" style={{ width: '100%', marginTop: '1.25rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                        onClick={handlePredict} disabled={loading || (!files.post_s1 && !files.post_s2)}>
+                        {loading ? <><Loader2 size={18} className="animate-spin" /> Running Inference…</> : <><Waves size={18} /> Run Flood Prediction</>}
                     </button>
 
                     {error && (
@@ -209,7 +214,6 @@ export default function FSPredictView() {
                         <h2 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <CheckCircle2 size={18} style={{ color: '#4ade80' }} /> Flood Assessment
                         </h2>
-
                         <div style={{ marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
                             <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 500, marginBottom: '4px' }}>Estimated Flooded Area</div>
                             <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>
@@ -217,7 +221,6 @@ export default function FSPredictView() {
                                 <span style={{ fontSize: '0.95rem', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '4px' }}>km²</span>
                             </div>
                         </div>
-
                         {Object.entries(results.breakdown || {}).map(([cls, d]) => (
                             <div key={cls} style={{ marginBottom: '1rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.88rem' }}>
@@ -232,6 +235,11 @@ export default function FSPredictView() {
                                 </div>
                             </div>
                         ))}
+                        {results.model_used && (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>
+                                🧠 {results.model_used}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -240,28 +248,18 @@ export default function FSPredictView() {
             <div className="main-content" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Prediction Results</h2>
 
-                {/* Map */}
                 <div className="glass-panel" style={{ padding: '1rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Flood Prediction Map
-                    </h3>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Flood Prediction Map</h3>
                     {hasMap ? (
                         <>
                             <div style={{ height: '360px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
                                 <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
-                                    <TileLayer
-                                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                                        attribution="Tiles © Esri"
-                                        maxZoom={18}
-                                    />
+                                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles © Esri" maxZoom={18} />
                                     <ImageOverlay url={results.pred_overlay} bounds={bounds} opacity={1} />
                                 </MapContainer>
                             </div>
                             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-                                {[
-                                    { color: 'rgba(255,0,0,0.7)', label: 'Predicted Flood' },
-                                    { color: 'rgba(0,0,0,0)', label: 'Dry / No Data', border: '1px dashed rgba(255,255,255,0.2)' },
-                                ].map(({ color, label, border }) => (
+                                {[{ color: 'rgba(255,0,0,0.7)', label: 'Predicted Flood' }, { color: 'rgba(0,0,0,0)', label: 'Dry / No Data', border: '1px dashed rgba(255,255,255,0.2)' }].map(({ color, label, border }) => (
                                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600 }}>
                                         <div style={{ width: 14, height: 14, borderRadius: 3, background: color, border: border || 'none' }} />
                                         <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
@@ -271,33 +269,23 @@ export default function FSPredictView() {
                         </>
                     ) : (
                         <div style={{ height: '360px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: 'var(--text-secondary)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.08)' }}>
-                            {loading
-                                ? <><Loader2 size={36} className="animate-spin" /><span style={{ fontWeight: 500 }}>Analysing 20-channel inputs…</span></>
-                                : <><Satellite size={40} opacity={0.3} /><span style={{ fontWeight: 500, fontSize: '0.95rem' }}>Upload files → Run Prediction to see the flood map</span></>
-                            }
+                            {loading ? <><Loader2 size={36} className="animate-spin" /><span style={{ fontWeight: 500 }}>Analysing inputs…</span></>
+                            : <><Satellite size={40} opacity={0.3} /><span style={{ fontWeight: 500, fontSize: '0.95rem' }}>Upload files → Run Prediction to see the flood map</span></>}
                         </div>
                     )}
                 </div>
 
-                {/* Preview images */}
                 {results && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                         {CHANNELS.filter(c => c.key !== 'aux' && results[PREVIEW_KEY[c.key]]).map(ch => (
                             <div key={ch.key} className="glass-panel" style={{ padding: '0.85rem' }}>
-                                <h4 style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    {ch.icon} {ch.label}
-                                </h4>
-                                <img
-                                    src={results[PREVIEW_KEY[ch.key]]}
-                                    alt={ch.label}
-                                    style={{ width: '100%', aspectRatio: '1/1', objectFit: 'contain', borderRadius: '8px', background: '#000' }}
-                                />
+                                <h4 style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{ch.icon} {ch.label}</h4>
+                                <img src={results[PREVIEW_KEY[ch.key]]} alt={ch.label} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'contain', borderRadius: '8px', background: '#000' }} />
                             </div>
                         ))}
                     </div>
                 )}
 
-                {/* Empty state */}
                 {!results && !loading && (
                     <div className="glass-panel" style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
