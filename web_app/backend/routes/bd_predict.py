@@ -186,6 +186,10 @@ def run_prediction():
 
         accuracy = round(correct / total_with_gt * 100, 1) if total_with_gt > 0 else None
 
+        # ── Update Intelligence Aggregator ────────────────────────────────
+        from .shared_state import update_damage_stats
+        update_damage_stats(total_buildings, breakdown, accuracy)
+
         return jsonify({
             'pre_image': f"data:image/png;base64,{pre_b64}",
             'post_image': f"data:image/png;base64,{post_b64}",

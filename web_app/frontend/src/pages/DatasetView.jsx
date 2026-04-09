@@ -189,36 +189,10 @@ export default function DatasetView() {
             {/* RIGHT COLUMN */}
             <div className="main-content" style={{ flex: 1, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', background: 'var(--bg-primary)' }}>
                 {!selectedItem ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--primary)' }}>
-                                <Activity size={28} />
-                                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Model Performance Overview</h2>
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Global Accuracy</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)' }}>{stats.accuracy ? (stats.accuracy * 100).toFixed(1) + '%' : '61.2%'}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Top epoch performance</div>
-                                </div>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>F1 Score (Weighted)</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(210, 100%, 70%)' }}>{stats.f1_score ? (stats.f1_score * 100).toFixed(1) + '%' : '61.4%'}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Class-weighted balance</div>
-                                </div>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Training Loss</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#ffbb33' }}>{stats.loss ? stats.loss.toFixed(3) : '1.028'}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Total convergence (25 epochs)</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', gap: '1rem', opacity: 0.6 }}>
-                            <Database size={48} strokeWidth={1} />
-                            <p style={{ fontWeight: 500 }}>Select an image from the sidebar to view detailed building analysis</p>
-                        </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', gap: '1rem', opacity: 0.4 }}>
+                        <Database size={64} strokeWidth={1} />
+                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Building Damage Explorer</h2>
+                        <p style={{ fontWeight: 400 }}>Select a mission profile from the sidebar to analyze satellite data</p>
                     </div>
                 ) : (
                     <>

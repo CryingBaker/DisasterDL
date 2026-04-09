@@ -1,16 +1,16 @@
 @import 'leaflet/dist/leaflet.css';
 
 :root {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --accent-primary: #2563eb;
-  --accent-secondary: #7c3aed;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #11111d;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --glass-bg: rgba(17, 17, 29, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
   --sidebar-width: 320px;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 body {
@@ -20,6 +20,9 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
+    radial-gradient(circle at 0% 100%, rgba(139, 92, 246, 0.05), transparent);
 }
 
 /* Premium Scrollbar */
@@ -32,7 +35,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #1e293b;
   border-radius: 10px;
 }
 
@@ -43,11 +46,11 @@ body {
 /* Glassmorphism Utility */
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
 }
 
 .gradient-text {
@@ -65,6 +68,7 @@ body {
   border-radius: 12px;
   z-index: 10;
   border: 1px solid var(--glass-border);
+  filter: saturate(1.2) brightness(0.9);
 }
 
 /* Navbar */
@@ -76,8 +80,8 @@ nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 10, 15, 0.8);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--glass-border);
 }
 
@@ -86,36 +90,56 @@ nav {
   text-decoration: none;
   margin-left: 2rem;
   font-weight: 600;
-  font-size: 0.95rem;
-  transition: color 0.2s;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  position: relative;
 }
 
 .nav-links a:hover,
 .nav-links a.active {
-  color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.nav-links a.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 10px var(--accent-primary);
 }
 
 /* Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  background: var(--accent-primary);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 10px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.8rem;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
-  filter: brightness(1.1);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+  filter: brightness(1.2);
 }
 
-.btn-primary:active {
-  transform: translateY(0);
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .page-container {
@@ -131,3 +155,18 @@ nav {
   gap: 2rem;
   min-height: calc(100vh - 120px);
 }
+
+.sidebar {
+  height: fit-content;
+  position: sticky;
+  top: 100px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

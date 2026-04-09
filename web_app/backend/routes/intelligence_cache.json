@@ -1,0 +1,39 @@
+{
+    "flood": {
+        "estimated_area_km2": 7.49,
+        "breakdown": {
+            "Flooded": {
+                "count": 74900,
+                "percentage": 28.57
+            },
+            "Dry/Safe": {
+                "count": 187244,
+                "percentage": 71.43
+            }
+        },
+        "timestamp": "2026-04-09T23:01:10.852804"
+    },
+    "damage": {
+        "total_buildings": 0,
+        "breakdown": {
+            "No Damage": {
+                "count": 0,
+                "percentage": 0
+            },
+            "Minor Damage": {
+                "count": 0,
+                "percentage": 0
+            },
+            "Major Damage": {
+                "count": 0,
+                "percentage": 0
+            },
+            "Destroyed": {
+                "count": 0,
+                "percentage": 0
+            }
+        },
+        "accuracy": null,
+        "timestamp": null
+    }
+}

@@ -3,6 +3,7 @@ import DatasetView from './pages/DatasetView';
 import PredictionView from './pages/PredictionView';
 import FSDatasetView from './pages/FSDatasetView';
 import FSPredictView from './pages/FSPredictView';
+import DashboardView from './pages/DashboardView';
 
 function NavBar() {
   const location = useLocation();
@@ -14,7 +15,8 @@ function NavBar() {
         </h1>
       </div>
       <div className="nav-links">
-        <Link to="/fs-dataset" className={location.pathname === '/fs-dataset' || location.pathname === '/' ? 'active' : ''}>Flood Dataset</Link>
+        <Link to="/" className={location.pathname === '/' ? 'active' : ''}>Overview</Link>
+        <Link to="/fs-dataset" className={location.pathname === '/fs-dataset' ? 'active' : ''}>Flood Dataset</Link>
         <Link to="/fs-predict" className={location.pathname === '/fs-predict' ? 'active' : ''}>Flood Predict</Link>
         <Link to="/bd-dataset" className={location.pathname === '/bd-dataset' ? 'active' : ''}>BD Dataset</Link>
         <Link to="/bd-predict" className={location.pathname === '/bd-predict' ? 'active' : ''}>BD Predict</Link>
@@ -30,7 +32,7 @@ function App() {
         <NavBar />
         <div className="page-container">
           <Routes>
-            <Route path="/" element={<FSDatasetView />} />
+            <Route path="/" element={<DashboardView />} />
             <Route path="/fs-dataset" element={<FSDatasetView />} />
             <Route path="/fs-predict" element={<FSPredictView />} />
             <Route path="/bd-dataset" element={<DatasetView />} />

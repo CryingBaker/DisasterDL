@@ -170,6 +170,10 @@ def run_prediction():
             'post_s2_image': _tif_to_rgb_b64(saved['post_s2'], [3,2,1])if 'post_s2' in saved else None,
         }
 
+        # ── Update Intelligence Aggregator ────────────────────────────────
+        from .shared_state import update_flood_stats
+        update_flood_stats(area_km2, breakdown)
+
         return jsonify({
             **previews,
             'pred_overlay':        pred_overlay,
