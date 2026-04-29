@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, ImageOverlay } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-    Upload, Layers, Loader2, AlertCircle, CheckCircle2, Satellite, Waves, ChevronDown
+    Upload, Layers, Loader2, AlertCircle, CheckCircle2, Satellite, Waves, ChevronDown, FileText,
+    TrendingUp, ArrowUpCircle, Activity, Info, Download
 } from 'lucide-react';
+import FloodReportDialog from '../components/FloodReportDialog';
 
 const PREDICT_API = 'http://localhost:5000/api/fs_predict';
 const DATASET_API = 'http://localhost:5000/api/fs_dataset';
@@ -51,7 +53,15 @@ export default function FSPredictView() {
     const [loading, setLoading]   = useState(false);
     const [error, setError]       = useState(null);
     const [results, setResults]   = useState(null);
+    const [reportOpen, setReportOpen] = useState(false);
     const fileInputRefs = useRef({});
+
+    // ── Water Rise Simulation ────────────────────────────────────────────
+    const [waterRise, setWaterRise]   = useState(2.0);
+    const [simLoading, setSimLoading] = useState(false);
+    const [simResults, setSimResults] = useState(null);
+    const [simError, setSimError]     = useState(null);
+    const [overlayMode, setOverlayMode] = useState('original'); // 'original' | 'simulated'
 
     // ── Model selection ──────────────────────────────────────────────────
     const [models, setModels]             = useState([]);
@@ -94,6 +104,8 @@ export default function FSPredictView() {
         setLoading(true);
         setError(null);
         setResults(null);
+        setSimResults(null);
+        setOverlayMode('original');
 
         const form = new FormData();
         for (const [key, file] of Object.entries(files)) {
@@ -113,8 +125,40 @@ export default function FSPredictView() {
         }
     };
 
+    // ── Water Rise Simulation handler ────────────────────────────────────
+    const handleSimulate = async () => {
+        if (!results?.mask_b64 || !files.aux) {
+            setSimError('Auxiliary GeoTIFF with elevation data is required for simulation.');
+            return;
+        }
+        setSimLoading(true);
+        setSimError(null);
+        setSimResults(null);
+
+        const form = new FormData();
+        form.append('aux', files.aux);
+        form.append('mask_b64', results.mask_b64);
+        form.append('mask_shape', JSON.stringify(results.mask_shape));
+        form.append('water_rise', waterRise.toString());
+
+        try {
+            const res = await fetch(`${PREDICT_API}/simulate`, { method: 'POST', body: form });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Simulation failed');
+            setSimResults(data);
+            setOverlayMode('simulated');
+        } catch (err) {
+            setSimError(err.message);
+        } finally {
+            setSimLoading(false);
+        }
+    };
+
     const bounds = results?.bounds;
     const hasMap = bounds && results?.pred_overlay;
+    const activeOverlay = overlayMode === 'simulated' && simResults?.sim_overlay
+        ? simResults.sim_overlay
+        : results?.pred_overlay;
 
     return (
         <div className="content-grid">
@@ -246,20 +290,77 @@ export default function FSPredictView() {
 
             {/* ── Main panel ──────────────────────────────────────────────── */}
             <div className="main-content" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Prediction Results</h2>
 
+                {/* Heading row with action buttons */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Prediction Results</h2>
+                    {results && (
+                        <button
+                            id="fs-generate-report-btn"
+                            onClick={() => setReportOpen(true)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.45rem',
+                                padding: '0.55rem 1.1rem', borderRadius: '10px', border: 'none',
+                                background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                                color: '#fff', fontWeight: 600, fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
+                                boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(37,99,235,0.35)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.25)'; }}
+                        >
+                            <Download size={15} /> Export Report
+                        </button>
+                    )}
+                </div>
+
+                {/* Map panel */}
                 <div className="glass-panel" style={{ padding: '1rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Flood Prediction Map</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Flood Prediction Map</h3>
+
+                        {/* Overlay Toggle */}
+                        {simResults && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0,0,0,0.04)', borderRadius: '8px', padding: '3px' }}>
+                                {[
+                                    { key: 'original', label: 'Original' },
+                                    { key: 'simulated', label: 'Simulated' },
+                                ].map(opt => (
+                                    <button
+                                        key={opt.key}
+                                        onClick={() => setOverlayMode(opt.key)}
+                                        style={{
+                                            padding: '0.3rem 0.7rem', borderRadius: '6px',
+                                            border: 'none', fontSize: '0.72rem', fontWeight: 600,
+                                            cursor: 'pointer', transition: 'all 0.15s',
+                                            background: overlayMode === opt.key
+                                                ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
+                                                : 'transparent',
+                                            color: overlayMode === opt.key ? '#fff' : 'var(--text-secondary)',
+                                            boxShadow: overlayMode === opt.key ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     {hasMap ? (
                         <>
                             <div style={{ height: '360px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
                                 <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
                                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles © Esri" maxZoom={18} />
-                                    <ImageOverlay url={results.pred_overlay} bounds={bounds} opacity={1} />
+                                    <ImageOverlay url={activeOverlay} bounds={bounds} opacity={1} />
                                 </MapContainer>
                             </div>
                             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-                                {[{ color: 'rgba(255,0,0,0.7)', label: 'Predicted Flood' }, { color: 'rgba(0,0,0,0)', label: 'Dry / No Data', border: '1px dashed rgba(255,255,255,0.2)' }].map(({ color, label, border }) => (
+                                {[
+                                    { color: 'rgba(255,0,0,0.7)', label: 'Predicted Flood' },
+                                    ...(overlayMode === 'simulated' && simResults ? [{ color: 'rgba(255,165,0,0.7)', label: 'Simulated Flood' }] : []),
+                                    { color: 'rgba(0,0,0,0)', label: 'Dry / No Data', border: '1px dashed rgba(0,0,0,0.15)' },
+                                ].map(({ color, label, border }) => (
                                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600 }}>
                                         <div style={{ width: 14, height: 14, borderRadius: 3, background: color, border: border || 'none' }} />
                                         <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
@@ -274,6 +375,166 @@ export default function FSPredictView() {
                         </div>
                     )}
                 </div>
+
+                {/* ── Water Rise Simulator — wide horizontal layout ────────── */}
+                {results && (
+                    <div className="glass-panel" style={{ padding: '1.25rem 1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: files.aux ? '1rem' : '0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <div style={{
+                                    width: 32, height: 32, borderRadius: 8,
+                                    background: 'linear-gradient(135deg, #06b6d4, #0ea5e9)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <TrendingUp size={16} color="#fff" />
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Water Rise Simulator</div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Elevation-based flood expansion using SRTM data</div>
+                                </div>
+                            </div>
+                            {!files.aux && (
+                                <div style={{
+                                    padding: '0.4rem 0.85rem', borderRadius: '8px',
+                                    background: 'rgba(14,165,233,0.06)',
+                                    border: '1px solid rgba(14,165,233,0.15)',
+                                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                    fontSize: '0.75rem', color: '#0284c7', fontWeight: 500,
+                                }}>
+                                    <Info size={13} />
+                                    Upload Auxiliary GeoTIFF to enable
+                                </div>
+                            )}
+                        </div>
+
+                        {files.aux && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem', alignItems: 'start' }}>
+                                {/* Left: Controls */}
+                                <div>
+                                    {/* Slider row */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                        {/* Elevation stats chips */}
+                                        {results.elevation_stats && (
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                                                {[
+                                                    { label: 'Ref', val: `${results.elevation_stats.median.toFixed(1)}m` },
+                                                    { label: 'Range', val: `${results.elevation_stats.min.toFixed(1)}–${results.elevation_stats.max.toFixed(1)}m` },
+                                                ].map(s => (
+                                                    <div key={s.label} style={{
+                                                        padding: '0.35rem 0.6rem', borderRadius: '7px',
+                                                        background: 'rgba(14,165,233,0.06)',
+                                                        border: '1px solid rgba(14,165,233,0.12)',
+                                                        fontSize: '0.68rem', lineHeight: 1.3,
+                                                    }}>
+                                                        <div style={{ fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.58rem', letterSpacing: '0.04em' }}>{s.label}</div>
+                                                        <div style={{ fontWeight: 700, color: '#0369a1' }}>{s.val}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Slider */}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Water Level Rise</span>
+                                                <span style={{
+                                                    fontSize: '1.05rem', fontWeight: 800,
+                                                    background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                                                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                                    backgroundClip: 'text',
+                                                }}>
+                                                    +{waterRise.toFixed(1)}m
+                                                </span>
+                                            </div>
+                                            <input
+                                                id="fs-water-rise-slider"
+                                                type="range" min="0" max="10" step="0.5"
+                                                value={waterRise}
+                                                onChange={e => setWaterRise(parseFloat(e.target.value))}
+                                                style={{
+                                                    width: '100%', height: '6px',
+                                                    appearance: 'none', WebkitAppearance: 'none',
+                                                    borderRadius: '3px', outline: 'none',
+                                                    background: `linear-gradient(90deg, #0ea5e9 ${waterRise * 10}%, #e2e8f0 ${waterRise * 10}%)`,
+                                                    cursor: 'pointer',
+                                                }}
+                                            />
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: '#94a3b8', marginTop: '2px' }}>
+                                                <span>0m</span><span>5m</span><span>10m</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Simulate button */}
+                                        <button
+                                            id="fs-simulate-btn"
+                                            onClick={handleSimulate}
+                                            disabled={simLoading}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                                padding: '0.55rem 1.1rem', borderRadius: '10px', border: 'none',
+                                                background: 'linear-gradient(135deg, #06b6d4, #0ea5e9)',
+                                                color: '#fff', fontWeight: 600, fontSize: '0.8rem',
+                                                cursor: simLoading ? 'wait' : 'pointer',
+                                                transition: 'all 0.2s', opacity: simLoading ? 0.7 : 1,
+                                                boxShadow: '0 4px 12px rgba(6,182,212,0.25)',
+                                                whiteSpace: 'nowrap', flexShrink: 0,
+                                            }}
+                                        >
+                                            {simLoading
+                                                ? <><Loader2 size={15} className="animate-spin" /> Simulating…</>
+                                                : <><ArrowUpCircle size={15} /> Simulate</>
+                                            }
+                                        </button>
+                                    </div>
+
+                                    {simError && (
+                                        <div style={{ marginTop: '0.6rem', padding: '0.55rem 0.75rem', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', color: '#ef4444', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <AlertCircle size={13} style={{ flexShrink: 0 }} />
+                                            <span>{simError}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right: Simulation Results */}
+                                {simResults && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                        padding: '0.6rem 1rem', borderRadius: '10px',
+                                        background: 'rgba(249,115,22,0.05)',
+                                        border: '1px solid rgba(249,115,22,0.15)',
+                                    }}>
+                                        <Activity size={16} style={{ color: '#ea580c', flexShrink: 0 }} />
+                                        <div style={{ display: 'flex', gap: '1.25rem' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.58rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.04em' }}>New Flooding</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#ea580c', lineHeight: 1.2 }}>
+                                                    +{simResults.additional_area_km2.toFixed(3)}
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 500, color: '#9a3412', marginLeft: '2px' }}>km²</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ width: 1, background: 'rgba(249,115,22,0.2)' }} />
+                                            <div>
+                                                <div style={{ fontSize: '0.58rem', fontWeight: 600, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Flooded</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#dc2626', lineHeight: 1.2 }}>
+                                                    {simResults.total_area_km2.toFixed(3)}
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 500, color: '#991b1b', marginLeft: '2px' }}>km²</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ width: 1, background: 'rgba(249,115,22,0.2)' }} />
+                                            <div>
+                                                <div style={{ fontSize: '0.58rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Threshold</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0369a1', lineHeight: 1.2 }}>
+                                                    {simResults.threshold}
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 500, color: '#64748b', marginLeft: '2px' }}>m</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {results && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
@@ -300,6 +561,14 @@ export default function FSPredictView() {
                     </div>
                 )}
             </div>
+
+            {/* Flood Report Dialog */}
+            <FloodReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                results={results}
+                uploadedFiles={files}
+            />
         </div>
     );
 }
